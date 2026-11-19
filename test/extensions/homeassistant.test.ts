@@ -2557,6 +2557,71 @@ describe("Extension: HomeAssistant", () => {
         });
     });
 
+    it("Should discover availability binary sensor when availability is enabled", async () => {
+        settings.set(["availability"], {enabled: true});
+        await resetExtension();
+
+        const payload = {
+            name: "Availability",
+            device_class: "problem",
+            entity_category: "diagnostic",
+            enabled_by_default: false,
+            state_topic: "zigbee2mqtt/weather_sensor/availability",
+            value_template: "{{ value_json.state }}",
+            payload_on: "offline",
+            payload_off: "online",
+            object_id: "weather_sensor_zigbee_availability",
+            default_entity_id: "binary_sensor.weather_sensor_zigbee_availability",
+            unique_id: "0x0017880104e45522_zigbee_availability_zigbee2mqtt",
+            device: {
+                identifiers: ["zigbee2mqtt_0x0017880104e45522"],
+                name: "weather_sensor",
+                sw_version: version,
+                model: "Temperature and humidity sensor",
+                model_id: "WSDCGQ11LM",
+                manufacturer: "Aqara",
+                via_device: "zigbee2mqtt_bridge_0x00124b00120144ae",
+            },
+            origin: origin,
+            availability: [{topic: "zigbee2mqtt/bridge/state", value_template: "{{ value_json.state }}"}],
+        };
+
+        expect(mockMQTTPublishAsync).toHaveBeenCalledWith(
+            "homeassistant/binary_sensor/0x0017880104e45522/zigbee_availability/config",
+            stringify(payload),
+            {
+                retain: true,
+                qos: 1,
+            },
+        );
+    });
+
+    it("Shouldnt discover availability binary sensor when availability is disabled", () => {
+        const topics = mockMQTTPublishAsync.mock.calls.map((c) => c[0]);
+        expect(topics).toContain("homeassistant/sensor/0x0017880104e45522/temperature/config");
+        expect(topics).not.toContain("homeassistant/binary_sensor/0x0017880104e45522/zigbee_availability/config");
+    });
+
+    it("Shouldnt discover availability binary sensor when availability is disabled for the device", async () => {
+        settings.set(["availability"], {enabled: true});
+        settings.set(["devices", "0x0017880104e45522", "availability"], false);
+        await resetExtension();
+
+        const topics = mockMQTTPublishAsync.mock.calls.map((c) => c[0]);
+        expect(topics).toContain("homeassistant/sensor/0x0017880104e45522/temperature/config");
+        expect(topics).not.toContain("homeassistant/binary_sensor/0x0017880104e45522/zigbee_availability/config");
+    });
+
+    it("Shouldnt discover availability binary sensor when set to null", async () => {
+        settings.set(["availability"], {enabled: true});
+        settings.set(["devices", "0x0017880104e45522", "homeassistant"], {zigbee_availability: null});
+        await resetExtension();
+
+        const topics = mockMQTTPublishAsync.mock.calls.map((c) => c[0]);
+        expect(topics).toContain("homeassistant/sensor/0x0017880104e45522/temperature/config");
+        expect(topics).not.toContain("homeassistant/binary_sensor/0x0017880104e45522/zigbee_availability/config");
+    });
+
     it("Should clear discovery when device is removed", async () => {
         mockMQTTPublishAsync.mockClear();
         mockMQTTEvents.message("zigbee2mqtt/bridge/request/device/remove", "weather_sensor");

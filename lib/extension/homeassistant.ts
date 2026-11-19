@@ -1724,6 +1724,24 @@ export class HomeAssistant extends Extension {
             configs.push(config);
         }
 
+        if (isDevice && utils.isAvailabilityEnabledForEntity(entity, settings.get())) {
+            configs.push({
+                type: "binary_sensor",
+                object_id: "zigbee_availability",
+                discovery_payload: {
+                    name: "Availability",
+                    device_class: "problem",
+                    entity_category: "diagnostic",
+                    enabled_by_default: false,
+                    state_topic: true,
+                    state_topic_postfix: "availability",
+                    value_template: "{{ value_json.state }}",
+                    payload_on: "offline",
+                    payload_off: "online",
+                },
+            });
+        }
+
         if (isDevice && entity.definition?.ota) {
             const updateSensor: DiscoveryEntry = {
                 type: "update",
@@ -1896,7 +1914,7 @@ export class HomeAssistant extends Extension {
                 payload.availability = [{topic: `${settings.get().mqtt.base_topic}/bridge/state`}];
 
                 if (isDevice || isGroup) {
-                    if (utils.isAvailabilityEnabledForEntity(entity, settings.get())) {
+                    if (config.object_id !== "zigbee_availability" && utils.isAvailabilityEnabledForEntity(entity, settings.get())) {
                         payload.availability_mode = "all";
                         payload.availability.push({topic: `${baseTopic}/availability`});
                     }
